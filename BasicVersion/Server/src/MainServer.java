@@ -6,10 +6,22 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 
 public class MainServer {
+
+    /**
+     * This function hashes a string with the SHA-1 algorithm
+     * @param data The string to hash
+     * @return An array of 20 bytes which is the hash of the string
+     */
+    public static byte[] hashSHA1(String data) throws NoSuchAlgorithmException{
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        return md.digest(data.getBytes());
+    }
 
     /**
      * @param in Stream from which to read the request
@@ -50,6 +62,7 @@ public class MainServer {
 
         Request request = readRequest(dataInputStream);
         long fileLength = request.getLengthFile();
+        byte[] hashClient = request.getHashPassword();
 
         FileManagement.receiveFile(inputStream, outFile, fileLength);
         /*
@@ -70,14 +83,15 @@ public class MainServer {
         boolean fileDecrypted = false;
         BruteForce bf = new BruteForce('a', 'z', request.getLengthPwd());
         while(!fileDecrypted){
-            try{
-                String password = bf.next();
-                System.out.println("Try password "+password+"...");
+            String password = bf.next();
+            System.out.println("Try password "+password+"...");
+            byte[] hashBf = hashSHA1(password);
+            if(Arrays.equals(hashBf, hashClient)){
                 SecretKey serverKey = CryptoUtils.getKeyFromPassword(password);
                 CryptoUtils.decryptFile(serverKey, networkFile, decryptedFile);
                 fileDecrypted = true;
                 System.out.println("===> find : "+password);
-            }catch (BadPaddingException ignored){}
+            }
         }
         // Send the decryptedFile
         InputStream inDecrypted = new FileInputStream(decryptedFile);
