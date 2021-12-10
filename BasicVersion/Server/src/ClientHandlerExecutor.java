@@ -4,19 +4,23 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 public class ClientHandlerExecutor implements Runnable {
 
     private Socket socket;
+    private HashMap<String, String> hashMapPasswordHash;
 
-    public ClientHandlerExecutor(Socket socket){
+    public ClientHandlerExecutor(Socket socket, HashMap<String, String> hashMapPasswordHash){
         this.socket = socket;
+        this.hashMapPasswordHash = hashMapPasswordHash;
     }
 
     @Override
@@ -48,27 +52,43 @@ public class ClientHandlerExecutor implements Runnable {
 
             // HERE THE PASSWORD IS HARDCODED, YOU MUST REPLACE THAT WITH THE BRUTEFORCE PROCESS
             boolean fileDecrypted = false;
-            BruteForce bf = new BruteForce('a', 'z', request.getLengthPwd());
-            int i = 0;
-            while (!fileDecrypted) {
-                String password = bf.next();
-                //System.out.println("Try password " + password + "... : attempt nr:" + i);
-                i++;
-                byte[] hashBf = hashSHA1(password);
-                if (Arrays.equals(hashBf, hashClient)) {
-                    SecretKey serverKey = CryptoUtils.getKeyFromPassword(password);
-                    CryptoUtils.decryptFile(serverKey, networkFile, decryptedFile);
-                    fileDecrypted = true;
-                    System.out.println("["+threadName+"] ===> find : " + password);
+
+            // If optimization is enabled, we first search if the password is in the hashMap
+            String passwordFromHashMap = "";
+            if(hashMapPasswordHash != null){
+                passwordFromHashMap = hashMapPasswordHash.get(new String(hashClient, StandardCharsets.UTF_8));
+                if(passwordFromHashMap != null) {
+                    System.out.println(("["+threadName+"] ===> Find password with '10k-most-common_filered.txt' file : "+passwordFromHashMap));
                 }
             }
+
+            //If optimization is enabled and we've found the password in the hashMap
+            if (passwordFromHashMap != null){
+                SecretKey serverKey = CryptoUtils.getKeyFromPassword(passwordFromHashMap);
+                CryptoUtils.decryptFile(serverKey, networkFile, decryptedFile);
+            }
+            else{
+                BruteForce bf = new BruteForce('a', 'z', request.getLengthPwd());
+                int i = 0;
+                while (!fileDecrypted) {
+                    String password = bf.next();
+                    //System.out.println("Try password " + password + "... : attempt nr:" + i);
+                    i++;
+                    byte[] hashBf = CryptoUtils.hashSHA1(password);
+                    if (Arrays.equals(hashBf, hashClient)) {
+                        SecretKey serverKey = CryptoUtils.getKeyFromPassword(password);
+                        CryptoUtils.decryptFile(serverKey, networkFile, decryptedFile);
+                        fileDecrypted = true;
+                        System.out.println("["+threadName+"] ===> Find password with BF : " + password);
+                    }
+                }
+            }
+
             // Send the decryptedFile
             InputStream inDecrypted = new FileInputStream(decryptedFile);
             outSocket.writeLong(decryptedFile.length());
             outSocket.flush();
             FileManagement.sendFile(inDecrypted, outSocket);
-
-
 
             dataInputStream.close();
             inputStream.close();
@@ -82,17 +102,6 @@ public class ClientHandlerExecutor implements Runnable {
                 | InvalidKeyException | NoSuchPaddingException | IOException | IllegalBlockSizeException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * This function hashes a string with the SHA-1 algorithm
-     *
-     * @param data The string to hash
-     * @return An array of 20 bytes which is the hash of the string
-     */
-    public static byte[] hashSHA1(String data) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("SHA-1");
-        return md.digest(data.getBytes());
     }
 
     /**

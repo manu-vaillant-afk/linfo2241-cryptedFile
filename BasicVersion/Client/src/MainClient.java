@@ -40,7 +40,7 @@ public class MainClient {
 
     public static void main(String[] args) {
         try{
-            String password = "test";
+            String password = "hardcore";
 
             SecretKey keyGenerated = CryptoUtils.getKeyFromPassword(password);
 
