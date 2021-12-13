@@ -4,12 +4,19 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
-
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public class MainClient {
@@ -40,6 +47,8 @@ public class MainClient {
 
     public static void main(String[] args) {
         try{
+            String[] commonPasswords = createArrayFromMostCommonPassword();
+
             String password = "hardcore";
 
             SecretKey keyGenerated = CryptoUtils.getKeyFromPassword(password);
@@ -72,29 +81,12 @@ public class MainClient {
             out.flush();
 
             FileManagement.sendFile(inFile, out);
-            /*
-            int readCount;
-            byte[] buffer = new byte[64];
-            //read from the file and send it in the socket
-            while ((readCount = inFile.read(buffer)) > 0){
-                out.write(buffer, 0, readCount);
-            }*/
 
             // GET THE RESPONSE FROM THE SERVER
             OutputStream outFile = new FileOutputStream(decryptedClient);
             long fileLengthServer = inSocket.readLong();
             System.out.println("Length from the server: "+ fileLengthServer);
             FileManagement.receiveFile(inSocket, outFile, fileLengthServer);
-
-            /*
-            int readFromSocket = 0;
-            int byteRead;
-            byte[] readBuffer = new byte[64];
-            while(readFromSocket < fileLengthServer){
-                byteRead = inSocket.read(readBuffer);
-                readFromSocket += byteRead;
-                outFile.write(readBuffer, 0, byteRead);
-            }*/
 
             out.close();
             outSocket.close();
@@ -109,5 +101,25 @@ public class MainClient {
             e.printStackTrace();
         }
 
+    }
+
+    //Create string array with most common passwords
+    private static String[] createArrayFromMostCommonPassword() {
+        System.out.println("==> Start computing array for most common used password...");
+        String[] res = null;
+        try (Stream<String> stream = Files.lines(Paths.get("10k-most-common_filered.txt"))) {
+            List<String> list = stream.collect(Collectors.toList());
+
+            res = new String[(int) list.size()];
+            int cpt=0;
+            for(String password : list){
+                res[cpt] = password;
+                cpt++;
+            }
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+        System.out.println("==> End computing array for most common used password");
+        return res;
     }
 }
