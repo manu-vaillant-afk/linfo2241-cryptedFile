@@ -1,20 +1,13 @@
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
 import java.io.*;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,62 +38,42 @@ public class MainClient {
         out.writeLong(fileLength);
     }
 
-    public static void main(String[] args) {
-        try{
-            String[] commonPasswords = createArrayFromMostCommonPassword();
+    private static String[] commonPasswords;
+    private static HashMap<Integer, String> networkFilesDifficultyMap;
+    private static String networkFilesFolder;
+    private static int nbThread;
+    private static int generatedPasswordSize;
+    private static Random random;
+    private static double commonPasswordRate;
+    private static String outputMeasurementsFile;
+    private static Writer fileWriter;
 
-            String password = "hardcore";
+    //Configure difficulties for the client
+    private static void configureClient() {
+        nbThread = 50;
+        networkFilesFolder = networkFilesDifficultyMap.get(0);
+        generatedPasswordSize = 5;
+        commonPasswordRate = (double)1/3;
+        outputMeasurementsFile = "measurements.csv";
+    }
 
-            SecretKey keyGenerated = CryptoUtils.getKeyFromPassword(password);
+    //Delete all pdf files in temp/ directory
+    public static void cleanTempDirectory(){
+        File tempDirectory = new File("temp");
+        final File[] files = tempDirectory.listFiles();
+        assert files != null;
+        for (File f : files)
+            f.delete();
+    }
 
-            File inputFile = new File("src/test_file.pdf");
-            File encryptedFile = new File("test_file-encrypted-client.pdf");
-            File decryptedClient = new File("test_file-decrypted-client.pdf");
-
-            // This is an example to help you create your request
-            CryptoUtils.encryptFile(keyGenerated, inputFile, encryptedFile);
-            System.out.println("Encrypted file length: " + encryptedFile.length());
-
-
-            // Creating socket to connect to server (in this example it runs on the localhost on port 3333)
-            Socket socket = new Socket("localhost", 3333);
-
-            // For any I/O operations, a stream is needed where the data are read from or written to. Depending on
-            // where the data must be sent to or received from, different kind of stream are used.
-            OutputStream outSocket = socket.getOutputStream();
-            DataOutputStream out = new DataOutputStream(outSocket);
-            InputStream inFile = new FileInputStream(encryptedFile);
-            DataInputStream inSocket = new DataInputStream(socket.getInputStream());
-
-
-            // SEND THE PROCESSING INFORMATION AND FILE
-            byte[] hashPwd = hashSHA1(password);
-            int pwdLength = password.length();
-            long fileLength = encryptedFile.length();
-            sendRequest(out, hashPwd, pwdLength, fileLength);
-            out.flush();
-
-            FileManagement.sendFile(inFile, out);
-
-            // GET THE RESPONSE FROM THE SERVER
-            OutputStream outFile = new FileOutputStream(decryptedClient);
-            long fileLengthServer = inSocket.readLong();
-            System.out.println("Length from the server: "+ fileLengthServer);
-            FileManagement.receiveFile(inSocket, outFile, fileLengthServer);
-
-            out.close();
-            outSocket.close();
-            outFile.close();
-            inFile.close();
-            inSocket.close();
-            socket.close();
-
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidAlgorithmParameterException |
-                NoSuchPaddingException | IllegalBlockSizeException | IOException | BadPaddingException |
-                InvalidKeyException e) {
+    //Synchronized method to write elapsed time of request to file 'outputMeasurementsFile'
+    public static synchronized void writeResult(long elapsedTime){
+        try {
+            fileWriter.write(elapsedTime+System.lineSeparator());
+            fileWriter.flush();
+        } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     //Create string array with most common passwords
@@ -110,7 +83,7 @@ public class MainClient {
         try (Stream<String> stream = Files.lines(Paths.get("10k-most-common_filered.txt"))) {
             List<String> list = stream.collect(Collectors.toList());
 
-            res = new String[(int) list.size()];
+            res = new String[list.size()];
             int cpt=0;
             for(String password : list){
                 res[cpt] = password;
@@ -122,4 +95,67 @@ public class MainClient {
         System.out.println("==> End computing array for most common used password");
         return res;
     }
+
+    /**
+     * Get random file path based on network files difficulty
+     * @return random network file name
+     */
+    public static String getNetworkFileName(){
+        int randomFileNumber = random.nextInt(5 - 1 + 1)+1;
+        return networkFilesFolder+"/file-"+randomFileNumber+".bin";
+    }
+
+    /**
+     * Get random password to crypt file
+     * Based on 'commonPasswordRate', this fuction will return a common password from the file '10k-most-common_filered.txt'
+     * @return random password
+     */
+    public static String getRandomPassword(){
+        if (Math.random() < commonPasswordRate){
+            String password = "";
+            //Loop until we get a password which length == generatedPasswordSize
+            while (password.length() != generatedPasswordSize){
+                int index = random.nextInt(commonPasswords.length - 0 + 1);
+                password = commonPasswords[index];
+            }
+            return password;
+        }
+
+        int leftLimit = 97; // letter 'a'
+        int rightLimit = 122; // letter 'z'
+
+        return random.ints(leftLimit, rightLimit + 1)
+                .limit(generatedPasswordSize)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+    }
+
+    public static void main(String[] args) throws IOException {
+        /**
+         * TODO :
+         *  -Configure request rate (time between two requests) and evaluate with different difficulties
+         */
+        cleanTempDirectory();
+
+        commonPasswords = createArrayFromMostCommonPassword();
+        networkFilesDifficultyMap = new HashMap<>();
+        networkFilesDifficultyMap.put(0, "Files-20KB");
+        networkFilesDifficultyMap.put(1, "Files-50KB");
+        networkFilesDifficultyMap.put(2, "Files-100KB");
+        networkFilesDifficultyMap.put(3, "Files-5MB");
+        networkFilesDifficultyMap.put(4, "Files-50MB");
+        configureClient();
+
+        fileWriter = new FileWriter(outputMeasurementsFile, false); //overwrites file
+
+        random = new Random();
+        ExecutorService executorService = Executors.newFixedThreadPool(nbThread);
+        for(int i=0; i<nbThread; i++){
+            ClientSendRequestExecutor clientSendRequestExecutor = new ClientSendRequestExecutor();
+            executorService.submit(clientSendRequestExecutor);
+        }
+    }
+
+
+
 }

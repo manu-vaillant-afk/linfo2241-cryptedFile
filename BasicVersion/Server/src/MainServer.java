@@ -1,18 +1,10 @@
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -21,8 +13,17 @@ import java.util.stream.Stream;
 
 public class MainServer {
 
+    //Delete all pdf files in temp/ directory
+    public static void cleanTempDirectory(){
+        File tempDirectory = new File("temp");
+        final File[] files = tempDirectory.listFiles();
+        assert files != null;
+        for (File f : files)
+            f.delete();
+    }
 
     public static void main(String[] args) throws IOException {
+        cleanTempDirectory();
         ServerSocket ss = null;
         Socket socket = null;
         boolean optimizePerformance = true;
@@ -52,6 +53,11 @@ public class MainServer {
 
     }
 
+    /**
+     * Create hash map with password hash as key and password  as value
+     * Passwords are from '10k-most-common_filered.txt'
+     * @return hashMap with password hash as key
+     */
     private static HashMap<String, String> createHashMapFromMostCommonPassword() {
         System.out.println("==> Start computing hashMap for most common used password...");
         HashMap<String, String> hashMap = new HashMap<>();
@@ -71,6 +77,7 @@ public class MainServer {
         return hashMap;
     }
 
+    //Get memory usage of hashMap
     public static void size(Map map) {
         try{
             System.out.println("Index Size: " + map.size());
