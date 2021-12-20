@@ -47,6 +47,7 @@ public class MainClient {
     private static double commonPasswordRate;
     private static String outputMeasurementsFile;
     private static Writer fileWriter;
+    private static double lambda;
 
     //Configure difficulties for the client
     private static void configureClient() {
@@ -55,6 +56,7 @@ public class MainClient {
         generatedPasswordSize = 5;
         commonPasswordRate = (double)1/3;
         outputMeasurementsFile = "measurements.csv";
+        lambda = (double)1/20;
     }
 
     //Delete all pdf files in temp/ directory
@@ -128,6 +130,12 @@ public class MainClient {
                 .limit(generatedPasswordSize)
                 .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
                 .toString();
+    }
+
+    //Get random time (seconds) following and exponential distribution
+    public static double exponentialNbSeconds() {
+        Random rand = new Random();
+        return Math.log(1 - rand.nextDouble())/(- lambda);
     }
 
     public static void main(String[] args) throws IOException {
