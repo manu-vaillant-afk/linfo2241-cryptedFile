@@ -138,11 +138,8 @@ public class MainClient {
         return Math.log(1 - rand.nextDouble())/(- lambda);
     }
 
+    //Main client
     public static void main(String[] args) throws IOException {
-        /**
-         * TODO :
-         *  -Configure request rate (time between two requests) and evaluate with different difficulties
-         */
         cleanTempDirectory();
 
         commonPasswords = createArrayFromMostCommonPassword();

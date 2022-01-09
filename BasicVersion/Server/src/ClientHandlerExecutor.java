@@ -25,6 +25,7 @@ public class ClientHandlerExecutor implements Runnable {
 
     @Override
     public void run() {
+        //Get thread name and create corresponding temp files
         String threadName = Thread.currentThread().getName();
         File decryptedFile = new File("temp/test_file-decrypted-server-"+threadName+".pdf");
         File networkFile = new File("temp/temp-server-"+threadName+".pdf");
@@ -68,14 +69,13 @@ public class ClientHandlerExecutor implements Runnable {
                 SecretKey serverKey = CryptoUtils.getKeyFromPassword(passwordFromHashMap);
                 CryptoUtils.decryptFile(serverKey, networkFile, decryptedFile);
             }
+            //Else we have to brute-force the password
             else{
                 BruteForce bf = new BruteForce('a', 'z', request.getLengthPwd());
-                int i = 0;
                 while (!fileDecrypted) {
                     String password = bf.next();
-                    //System.out.println("Try password " + password + "... : attempt nr:" + i);
-                    i++;
                     byte[] hashBf = CryptoUtils.hashSHA1(password);
+                    //If we found the password
                     if (Arrays.equals(hashBf, hashClient)) {
                         SecretKey serverKey = CryptoUtils.getKeyFromPassword(password);
                         CryptoUtils.decryptFile(serverKey, networkFile, decryptedFile);
