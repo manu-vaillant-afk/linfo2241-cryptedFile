@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
@@ -82,5 +83,19 @@ public class CryptoUtils {
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
         KeySpec spec = new PBEKeySpec(password.toCharArray(), " ".getBytes(), 65536, 128);
         return new SecretKeySpec(factory.generateSecret(spec).getEncoded(),"AES");
+    }
+
+    /**
+     * This function hashes a string with the SHA-1 algorithm
+     *
+     * @param data The string to hash
+     * @return An array of 20 bytes which is the hash of the string
+     */
+    public static byte[] hashSHA1(String data) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        byte[] bytes = md.digest(data.getBytes());
+        //System.out.println("md.toString() : "+md.toString());
+        //System.out.println("new String(bytes, StandardCharsets.UTF_8) : "+ new String(bytes, StandardCharsets.UTF_8));
+        return bytes;
     }
 }
