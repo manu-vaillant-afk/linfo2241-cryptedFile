@@ -10,6 +10,7 @@
 
 # AWS User-specific
 .idea/**/aws.xml
+<<<<<<< HEAD
 .idea/**/tasks
 
 # Generated files
