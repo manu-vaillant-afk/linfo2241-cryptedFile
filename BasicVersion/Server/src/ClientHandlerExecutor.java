@@ -26,9 +26,8 @@ public class ClientHandlerExecutor implements Runnable {
     @Override
     public void run() {
         String threadName = Thread.currentThread().getName();
-        File decryptedFile = new File("test_file-decrypted-server-"+threadName+".pdf");
-        File networkFile = new File("temp-server-"+threadName+".pdf");
-
+        File decryptedFile = new File("temp/test_file-decrypted-server-"+threadName+".pdf");
+        File networkFile = new File("temp/temp-server-"+threadName+".pdf");
         try{
             // Stream to read request from socket
             InputStream inputStream = null;
@@ -55,15 +54,17 @@ public class ClientHandlerExecutor implements Runnable {
 
             // If optimization is enabled, we first search if the password is in the hashMap
             String passwordFromHashMap = "";
+            boolean findPassword = false;
             if(hashMapPasswordHash != null){
                 passwordFromHashMap = hashMapPasswordHash.get(new String(hashClient, StandardCharsets.UTF_8));
                 if(passwordFromHashMap != null) {
+                    findPassword = true;
                     System.out.println(("["+threadName+"] ===> Find password with '10k-most-common_filered.txt' file : "+passwordFromHashMap));
                 }
             }
 
             //If optimization is enabled and we've found the password in the hashMap
-            if (passwordFromHashMap != null){
+            if (findPassword){
                 SecretKey serverKey = CryptoUtils.getKeyFromPassword(passwordFromHashMap);
                 CryptoUtils.decryptFile(serverKey, networkFile, decryptedFile);
             }
