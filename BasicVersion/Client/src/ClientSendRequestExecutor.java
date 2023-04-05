@@ -16,14 +16,12 @@ public class ClientSendRequestExecutor implements Runnable {
             String threadName = Thread.currentThread().getName();
 
             //Get number of seconds to wait before sending request following exponential distribution
-
             double secondsToSleep = MainClient.exponentialNbSeconds();
             System.out.println("(sleep) "+threadName+" : "+secondsToSleep);
             Thread.sleep((long)secondsToSleep*1000);
 
-
+            //Get random password to crypt the file
             String password = MainClient.getRandomPassword();
-
             SecretKey keyGenerated = CryptoUtils.getKeyFromPassword(password);
 
             File inputFile = new File(MainClient.getNetworkFileName());
@@ -44,7 +42,6 @@ public class ClientSendRequestExecutor implements Runnable {
             DataOutputStream out = new DataOutputStream(outSocket);
             InputStream inFile = new FileInputStream(encryptedFile);
             DataInputStream inSocket = new DataInputStream(socket.getInputStream());
-
 
             // SEND THE PROCESSING INFORMATION AND FILE
             byte[] hashPwd = MainClient.hashSHA1(password);

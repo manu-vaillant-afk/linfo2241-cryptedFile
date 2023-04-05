@@ -22,6 +22,7 @@ public class MainServer {
             f.delete();
     }
 
+    //Main server
     public static void main(String[] args) throws IOException {
         cleanTempDirectory();
         ServerSocket ss = null;
@@ -30,17 +31,19 @@ public class MainServer {
 
         try {
             ss = new ServerSocket(3333);
-            ExecutorService executorService = Executors.newFixedThreadPool(8);
+            //Create thread pool executor to handle client query
+            ExecutorService executorService = Executors.newFixedThreadPool(4);
+            //HashMap for common passwords
             HashMap<String, String> hashMapPasswordHash = null;
             if(optimizePerformance)
                 hashMapPasswordHash = createHashMapFromMostCommonPassword();
 
             while (true){
+                //For each connection, launch a new thread to handle it
                 System.out.println("Waiting connection");
                 socket = ss.accept();
                 System.out.println("Connection from: " + socket);
                 ClientHandlerExecutor clientHandler = new ClientHandlerExecutor(socket, hashMapPasswordHash);
-
                 executorService.submit(clientHandler);
             }
         } catch (IOException e) {
