@@ -15,6 +15,13 @@ public class ClientSendRequestExecutor implements Runnable {
         try{
             String threadName = Thread.currentThread().getName();
 
+            //Get number of seconds to wait before sending request following exponential distribution
+
+            double secondsToSleep = MainClient.exponentialNbSeconds();
+            System.out.println("(sleep) "+threadName+" : "+secondsToSleep);
+            Thread.sleep((long)secondsToSleep*1000);
+
+
             String password = MainClient.getRandomPassword();
 
             SecretKey keyGenerated = CryptoUtils.getKeyFromPassword(password);
@@ -68,9 +75,7 @@ public class ClientSendRequestExecutor implements Runnable {
             encryptedFile.delete();
             decryptedClient.delete();
 
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidAlgorithmParameterException |
-                NoSuchPaddingException | IllegalBlockSizeException | IOException | BadPaddingException |
-                InvalidKeyException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidAlgorithmParameterException | NoSuchPaddingException | IllegalBlockSizeException | IOException | BadPaddingException | InvalidKeyException | InterruptedException e) {
             e.printStackTrace();
         }
     }
